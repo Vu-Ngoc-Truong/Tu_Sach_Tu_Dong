@@ -30,6 +30,7 @@ Keypad customKeypad = Keypad( makeKeymap(hexaKeys), rowPins, colPins, ROWS, COLS
 // LCD pin : GND , VCC, SDA ,SCL
 LiquidCrystal_I2C lcd(0x27, 16, 2); // 0x27 la dia chi I2C cua LCD
 
+
 // --------------------------
 // Khởi tạo đồng hồ thời gian thực
 RTClib myRTC;
@@ -113,6 +114,9 @@ int Status = 0 ;
 #define X_STOP 9
 #define Y_STOP 10
 
+// Cảm biến phát hiện có sách trong máng
+#define MangSach 11
+
 // Nút ấn điều khiển
 #define START A0
 #define STOP  A2
@@ -134,9 +138,9 @@ int delayTime=1200; //Delay between each pause (uS)
 // Các tọa độ trục ( xung)
 
 // Toa do truc X cho cac vi tri sach 0-9
-int X_Index[10] = {0,490,970,1440,1920,0,490,970,1440,1920};
+int X_Index[10] = {0,470,950,1425,1905,20,475,955,1425,1910};
 // toa do truc Y cho cac vi tri lay sach 0-9
-int Y_Index[10] = {0,0,0,0,0,6500,6500,6500,6500,6500} ; // 6500 ~ 260 mm
+int Y_Index[10] = {0,0,0,0,0,6410,6410,6410,6410,6410} ; // 6500 ~ 260 mm
 // Toa do chenh lech giua vi tri lay va tra sach
 int Y_tra_sach = 250 ; // 10 mm
 int toa_do_X = 0; // Toa do hien tai cua X theo xung
@@ -164,13 +168,16 @@ void stepRun(boolean dir, byte dirPin, byte stepperPin, int steps)
 // Hàm về gốc cho trục X,Y
 bool veGoc( byte dirPin, byte stepperPin,byte stopPin)
 {
+  FB_DayRa();
+  digitalWrite(EN, LOW);
   while ( digitalRead(stopPin) == 0 ) // CTHT chưa chạm
   {
     stepRun(false, dirPin, stepperPin,1); //Chạy lùi về gốc
 
   }
   return ( digitalRead(stopPin) ) ; // ve goc xong tra ve gia tri 1
-
+  digitalWrite(EN, HIGH);
+  delay(100); // Chờ chút
 
 }
 
@@ -222,8 +229,15 @@ void do_toa_do_Y()
   }
 }
 
-// >>>>>>>> Ham dieu khien cum lay sach vao ra
-// Đẩy vào
+// >>>>>>>> Ham dieu khien cum lay sach vao ra <<<<<<<<<
+// Dừng động cơ
+void FB_Dung()
+{
+  digitalWrite(DCMotorP, HIGH);
+  digitalWrite(DCMotorN, HIGH);
+}
+
+// Tay gạtđẩy vào
 void FB_DayVao()
 {
   while (digitalRead(FB_LimitP) ==0)
@@ -231,13 +245,18 @@ void FB_DayVao()
     digitalWrite(DCMotorP, HIGH);
     digitalWrite(DCMotorN, LOW);
     }
+  FB_Dung();
 }
 
-// Dừng động cơ
-void FB_Dung()
+// Tay gat day ra
+void FB_DayRa()
 {
-  digitalWrite(DCMotorP, HIGH);
-  digitalWrite(DCMotorN, HIGH);
+  while (digitalRead(FB_LimitN) ==0)
+    {
+      digitalWrite(DCMotorP, LOW);
+      digitalWrite(DCMotorN, HIGH);
+    }
+    FB_Dung();
 }
 
 // Tay gat quay xuong
@@ -260,16 +279,6 @@ void FB_QuayLen()
     }
 }
 
-// Tay gat day ra
-void FB_DayRa()
-{
-  while (digitalRead(FB_LimitN) ==0)
-    {
-      digitalWrite(DCMotorP, LOW);
-      digitalWrite(DCMotorN, HIGH);
-    }
-}
-
 // Xuất sách ra
 void FB_DayMangRa()
 {
@@ -289,6 +298,153 @@ void FB_ThuMangVe()
       delay(10);
     }
 }
+
+// Về gốc toàn máy
+void VeGocAll()
+{
+  myservo2.write(90);   // Quay tay gạt lên
+  FB_DayRa();    // Đẩy tay gạt vào
+  myservo1.write(0);
+  veGoc(Y_DIR, Y_STP, Y_STOP);  // Hạ bộ gắp sách xuống
+  veGoc(X_DIR, X_STP, X_STOP);  // Về gốc trục X
+  step_X = 1;
+  step_Y = 1;
+  digitalWrite(EN, HIGH);
+}
+
+// Hàm lấy sách
+void RUN_LaySach()
+{
+  lcd.setCursor(0,0)            ; // Chọn vị trí con trỏ (cột,hàng)
+  lcd.print("Dang Thuc Hien: ") ; 
+  lcd.setCursor(0,1)            ;
+  lcd.print("Lay Sach O So   ") ;
+  lcd.setCursor(15,1)           ;
+  lcd.print(String(viTriSach)) ;
+  // Dong co buoc ve goc
+  digitalWrite(EN, LOW);
+  veGoc(X_DIR, X_STP, X_STOP);
+  veGoc(Y_DIR, Y_STP, Y_STOP);
+  step_X = 1;
+  step_Y = 1;
+  delay(100);
+  // Den vi tri lay sach
+  stepRun(true, X_DIR, X_STP,X_Index[viTriSach]); // Chay den toa do X
+  stepRun(true, Y_DIR, Y_STP,Y_Index[viTriSach]); // Nang len toa do Y
+  step_X = 2;
+  step_Y = 2;
+  delay(100);
+  FB_DayVao();    // Đẩy vào
+  FB_QuayXuong(); // Quay Xuong
+  FB_DayRa();     // Đi ra
+  veGoc(X_DIR, X_STP, X_STOP);
+  FB_QuayLen();  // Quay Lên
+  FB_DayMangRa(); // Đẩy máng sách ra
+  digitalWrite(EN, HIGH);
+  delay(5000);   // Chờ 10 giây
+  FB_ThuMangVe(); // Thu máng sách về
+}
+
+// Hàm trả sách
+void RUN_TraSach()
+{
+  lcd.setCursor(0,0)            ; // Chọn vị trí con trỏ (cột,hàng)
+  lcd.print("Dang Thuc Hien: ") ; 
+  lcd.setCursor(0,1)            ;
+  lcd.print("Tra Sach O So   ") ;
+  lcd.setCursor(15,1)           ;
+  lcd.print(String(viTriSach))  ;
+  // Về gốc
+  digitalWrite(EN, LOW);
+  veGoc(X_DIR, X_STP, X_STOP);
+  veGoc(Y_DIR, Y_STP, Y_STOP);
+  step_X = 1;
+  step_Y = 1;
+  delay(500);
+  FB_DayMangRa(); // Đẩy máng sách ra
+  delay(5000);   // Chờ 10 giây
+  FB_ThuMangVe(); // Đẩy máng sách vào
+  stepRun(true, X_DIR, X_STP, X_Index[viTriSach]); //X, Counterclockwise
+  stepRun(true, Y_DIR, Y_STP, Y_Index[viTriSach] + 70); //Y, Counterclockwise
+  step_X = 2;
+  step_Y = 2;
+  delay(500);
+  FB_QuayXuong(); // Quay Xuong
+  FB_DayVao();    //Đẩy vào
+  FB_Dung();      // Dừng động cơ
+  FB_QuayLen(); // Quay Lên
+  FB_DayRa();   // Đi ra
+  FB_Dung();      // Dừng động cơ
+  // Về gốc
+  veGoc(X_DIR, X_STP, X_STOP);
+  veGoc(Y_DIR, Y_STP, Y_STOP);
+  digitalWrite(EN, HIGH);
+  
+
+}
+// Hàm cho LCD
+// Giao diện chọn giao dịch
+void LCD_ChonGD()
+{
+  lcd.setCursor(0,0)            ; // Chọn vị trí con trỏ (cột,hàng)
+  lcd.print("CHON GIAO DICH: ") ; 
+  lcd.setCursor(0,1)            ;
+  lcd.print("A: Muon | B: Tra") ;
+}
+
+// Giao diện nhập số
+void LCD_NhapSo()
+{
+  lcd.setCursor(0,0)            ; // Chọn vị trí con trỏ (cột,hàng)
+  lcd.print("Vi Tri Sach:    ") ; 
+  lcd.setCursor(0,1)            ;
+  lcd.print("*: Huy | #: OK  ") ;
+  lcd.setCursor(13,0)           ; // Chọn vị trí con trỏ nhập số
+  lcd.print(String(viTriSach));
+  lcd.setCursor(13,0)           ; // Chọn vị trí con trỏ nhập số
+  
+  char customKey    ;  // Biến đọc giá trị nút ấn
+  lcd.cursor()      ;  // Hiển thị con trỏ
+  lcd.blink()       ;  // Nhap nhay con tro
+  do
+    {
+      customKey = customKeypad.getKey();
+      switch (customKey)
+        {
+          case '0' :  lcd.print('0'); viTriSach = 0;lcd.leftToRight();break;
+          case '1' :  lcd.print('1'); viTriSach = 1;lcd.leftToRight();break;
+          case '2' :  lcd.print('2'); viTriSach = 2;lcd.leftToRight();break;
+          case '3' :  lcd.print('3'); viTriSach = 3;lcd.leftToRight();break;
+          case '4' :  lcd.print('4'); viTriSach = 4;lcd.leftToRight();break;
+          case '5' :  lcd.print('5'); viTriSach = 5;lcd.leftToRight();break;
+          case '6' :  lcd.print('6'); viTriSach = 6;lcd.leftToRight();break;
+          case '7' :  lcd.print('7'); viTriSach = 7;lcd.leftToRight();break;
+          case '8' :  lcd.print('8'); viTriSach = 8;lcd.leftToRight();break;
+          case '9' :  lcd.print('9'); viTriSach = 9;lcd.leftToRight();break;
+          case '*' : 
+          {
+            HanhDong =0; 
+            lcd.setCursor(0,1)            ;
+            lcd.print("Huy Giao Dich!!!") ;
+            break;
+          }
+          case '#' : 
+          {
+            lcd.setCursor(0,1)            ;
+            lcd.print("Nhap Thanh Cong!") ;
+            break;
+          } 
+        }
+  
+    }
+  while ( (customKey != '*' ) && (customKey != '#' ))  ;  // thoat khi phim # được ấn
+  lcd.noBlink()             ;  // Tắt nhấp nháy con trỏ
+  lcd.noCursor()            ;  // Ẩn con trỏ
+  delay(1000);
+ 
+
+}
+
 void setup() {
   Serial.begin(9600);            // toc do cong noi tiep
   // Input cum ra vao lay sach
@@ -322,7 +478,7 @@ void setup() {
 
   pinMode(EN, OUTPUT);
 
-  digitalWrite(EN, HIGH);
+  
   
   // Thời gian
   Wire.begin();
@@ -334,11 +490,11 @@ void setup() {
 	lcd.print("!!! WELLCOME !!!") ; // Nội dung dòng 1
   lcd.setCursor(0,1)            ; // Chọn dòng 2
   lcd.print("TU SACH TU DONG ") ; // Nội dung dòng 2
+  VeGocAll();
+  digitalWrite(EN, HIGH);
   delay(2000);
-  lcd.setCursor(0,0)            ; // Chọn vị trí con trỏ (cột,hàng)
-  lcd.print("CHON GIAO DICH: ")  ; 
-  lcd.setCursor(0,1)            ;
-  lcd.print("A: Muon / B: Tra") ;
+  LCD_ChonGD();
+  delay(1000);
 
 }
 
@@ -353,17 +509,24 @@ void loop()
     if(customKey == 'A')
     {
       lcd.setCursor(0,0)            ; // Chọn vị trí con trỏ (cột,hàng)
-      lcd.print("Ban Da Chon:    ") ; 
+      lcd.print("Ban Chon :      ") ; 
       lcd.setCursor(0,1)            ;
-      lcd.print(" A : Muon Sach  ") ;
+      lcd.print("   A : Muon Sach") ;
+      HanhDong = 1;
+      delay(2000);
+      LCD_NhapSo();
     }
     // Tra sach
     if(customKey == 'B')
     {
       lcd.setCursor(0,0)            ; // Chọn vị trí con trỏ (cột,hàng)
-      lcd.print("Ban Da Chon:    ") ; 
+      lcd.print("Ban Chon :      ") ; 
       lcd.setCursor(0,1)            ;
-      lcd.print(" B : Tra Sach   ") ;
+      lcd.print("   B :  Tra Sach") ;
+      HanhDong = 2;
+      delay(2000);
+      LCD_NhapSo();
+
     }
   }
   // DateTime now = myRTC.now();
@@ -404,6 +567,7 @@ void loop()
     }
     if (dataIn.startsWith("DOX"))
     {
+      Serial.println("Dang Do Truc X");
       digitalWrite(EN, LOW);
       veGoc(X_DIR, X_STP, X_STOP);
       toa_do_X=0;
@@ -412,6 +576,7 @@ void loop()
     }
     if (dataIn.startsWith("DOY"))
     {
+      Serial.println("Dang Do Truc Y");
       digitalWrite(EN, LOW);
       veGoc(Y_DIR, Y_STP, Y_STOP);
       toa_do_Y=0;
@@ -425,68 +590,42 @@ void loop()
       Serial.println(Stime);
       setTime(Stime);
     }
+    // Về gốc All
+    if (dataIn.startsWith("GOCA"))
+    {
+      Serial.println("Ve goc toan may");
+      VeGocAll();
+    }
+
+    // Đọc các tham số
+     // Đặt thời gian cho đồng hồ
+    if (dataIn.startsWith("HD"))
+    {
+      Serial.print("Hanh Dong : ");
+      Serial.println(HanhDong);
+    }
+    if (dataIn.startsWith("VTS"))
+    {
+      Serial.print("Vi Tri Sach : ");
+      Serial.println(viTriSach);
+    }
     
   }
 
   // >>>>>>>>>>>>>>>  Lấy sách  <<<<<<<<<<<<<<<
   if ((digitalRead(RUN_P) == 0)&& (digitalRead(RUN_N) == 1) && (HanhDong == 1 ) )
   {
-    // Dong co buoc ve goc
-    digitalWrite(EN, LOW);
-    veGoc(X_DIR, X_STP, X_STOP);
-    veGoc(Y_DIR, Y_STP, Y_STOP);
-    step_X = 1;
-    step_Y = 1;
-    delay(100);
-    // Den vi tri lay sach
-    stepRun(true, X_DIR, X_STP,X_Index[viTriSach]); // Chay den toa do X
-    stepRun(true, Y_DIR, Y_STP,Y_Index[viTriSach]); // Nang len toa do Y
-    step_X = 2;
-    step_Y = 2;
-    delay(100);
-    FB_DayVao();    // Đẩy vào
-    FB_Dung()  ;    // Dừng động cơ
-    FB_QuayXuong(); // Quay Xuong
-    FB_DayRa();     // Đi ra
-    FB_Dung();     // Dừng động cơ
-    veGoc(X_DIR, X_STP, X_STOP);
-    FB_QuayLen();  // Quay Lên
-    FB_DayMangRa(); // Đẩy máng sách ra
-    digitalWrite(EN, HIGH);
-    delay(10000);   // Chờ 10 giây
-    FB_ThuMangVe(); // Thu máng sách về
+    RUN_LaySach();
     HanhDong = 0; // Thuc hien xong giao dich
+    LCD_ChonGD();
   }
 
 // >>>>>>>>>>>>>>>  Trả sách  <<<<<<<<<<<<<<<
   if ((digitalRead(RUN_P) == 1)&& (digitalRead(RUN_N) == 0) && (HanhDong == 2 ))
   {
-    // Về gốc
-    digitalWrite(EN, LOW);
-    veGoc(X_DIR, X_STP, X_STOP);
-    veGoc(Y_DIR, Y_STP, Y_STOP);
-    step_X = 1;
-    step_Y = 1;
-    delay(500);
-    FB_DayMangRa(); // Đẩy máng sách ra
-    delay(10000);   // Chờ 10 giây
-    FB_ThuMangVe(); // Đẩy máng sách vào
-    stepRun(true, X_DIR, X_STP, X_Index[viTriSach]); //X, Counterclockwise
-    stepRun(true, Y_DIR, Y_STP, Y_Index[viTriSach] + 200); //Y, Counterclockwise
-    step_X = 2;
-    step_Y = 2;
-    delay(500);
-    FB_QuayXuong(); // Quay Xuong
-    FB_DayVao();    //Đẩy vào
-    FB_Dung();      // Dừng động cơ
-    FB_QuayLen(); // Quay Lên
-    FB_DayRa();   // Đi ra
-    FB_Dung();      // Dừng động cơ
-    // Về gốc
-    veGoc(X_DIR, X_STP, X_STOP);
-    veGoc(Y_DIR, Y_STP, Y_STOP);
-    digitalWrite(EN, HIGH);
+    RUN_TraSach();
     HanhDong = 0; // Thuc hien xong giao dich
+    LCD_ChonGD();
   }
 
 
