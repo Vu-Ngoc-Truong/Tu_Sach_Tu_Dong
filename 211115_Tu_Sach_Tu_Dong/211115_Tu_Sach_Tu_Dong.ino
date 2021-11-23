@@ -10,8 +10,8 @@
 // >>> Khai báo tham số máy <<<<<<
 int Status = 0 ;
 String QRcodeSach ; // Chuỗi ký tự QR code của sách
-
-
+String MaSach;      // Mã số của sách 001 --> 255
+String TenGoiNhoSach; // Tên gợi nhớ của sách (bé hơn 16 ký tự)
 
 // Về gốc toàn máy
 void VeGocAll()
@@ -29,67 +29,89 @@ void VeGocAll()
 // Hàm lấy sách
 void RUN_LaySach()
 {
-  lcd.setCursor(0,0)            ; // Chọn vị trí con trỏ (cột,hàng)
-  lcd.print("Dang Thuc Hien: ") ; 
-  lcd.setCursor(0,1)            ;
-  lcd.print("Lay Sach O So   ") ;
-  lcd.setCursor(15,1)           ;
-  lcd.print(String(viTriSach)) ;
+  LCD_DangLaySach();
   // Dong co buoc ve goc
   digitalWrite(EN, LOW);
-  veGoc(Y_DIR, Y_STP, Y_STOP,TIME_SPEED_HIGH);
-  veGoc(X_DIR, X_STP, X_STOP,TIME_SPEED_LOW);
+  veGoc(Y_DIR, Y_STP, Y_STOP, TIME_SPEED_HIGH);
+  veGoc(X_DIR, X_STP, X_STOP, TIME_SPEED_LOW);
   step_X = 1;
   step_Y = 1;
   delay(100);
-  // Den vi tri lay sach
-  stepRun(true, X_DIR, X_STP,X_Index[viTriSach],TIME_SPEED_MID); // Chay den toa do X
-  stepRun(true, Y_DIR, Y_STP,Y_Index[viTriSach],TIME_SPEED_HIGH); // Nang len toa do Y
-  step_X = 2;
-  step_Y = 2;
-  delay(50);
-  FB_DayVao();    // Đẩy vào
-  // Lùi ra 1 chút
-  FB_DayRa_NoLimit();
-  delay(80);
-  FB_Dung();
-  FB_QuayXuong(); // Quay Xuong
-  FB_DayRa();     // Đi ra
-  veGoc(Y_DIR, Y_STP, Y_STOP,TIME_SPEED_HIGH);
-  veGoc(X_DIR, X_STP, X_STOP,TIME_SPEED_LOW);
-  FB_QuayLen();  // Quay Lên
-  QRcodeSach =  QR_Read_CMD();
-  lcd.clear();
-  lcd.setCursor(0,0)            ; // Chọn vị trí con trỏ (cột,hàng)
-  lcd.print("Ban muon sach : ") ; 
-  lcd.setCursor(0,1)            ;
-  lcd.print(QRcodeSach) ;
-  FB_DayMangRa(); // Đẩy máng sách ra
-  digitalWrite(EN, HIGH);
-  // CHờ sách được lấy 
-  previousMillis = millis();
-  while ((digitalRead(MangSach) == SS_CoSach) && ((millis() - previousMillis) < TIMEOUT_SS_PHAT_HIEN_SACH) ) ;
-  delay(2000);
-  FB_ThuMangVe(); // Thu máng sách về
+  // Kiểm tra trong máng sách có còn sách không
+  // Nếu có thì đẩy máng sách ra để lấy sách ra
+  if ((digitalRead(MangSach) == SS_CoSach))
+  {
+    LCD_CanhBao("Mang Co Sach !!!");
+    FB_DayMangRa();
+    LCD_CanhBao("Lay Sach Ra !!! ");
+    delay(5000); //  CHờ lấy sách ra
+    FB_ThuMangVe();
+    if ((digitalRead(MangSach) == SS_CoSach))
+    {
+      LCD_CanhBao("Ket Thuc GD !!!!");
+      delay(2000);
+      LCD_ChonGD();
+    }
+  }
+  if ((digitalRead(MangSach) == SS_KhongSach))
+  {
+    LCD_DangLaySach();
+    // Den vi tri lay sach
+    stepRun(true, X_DIR, X_STP, X_Index[viTriSach], TIME_SPEED_LOW);  // Chay den toa do X
+    stepRun(true, Y_DIR, Y_STP, Y_Index[viTriSach], TIME_SPEED_HIGH); // Nang len toa do Y
+    step_X = 2;
+    step_Y = 2;
+    delay(50);
+    FB_DayVao(); // Đẩy vào
+    // Lùi ra 1 chút
+    FB_DayRa_NoLimit();
+    delay(50);
+    FB_Dung();
+    FB_QuayXuong(); // Quay Xuong
+    FB_DayRa();     // Đi ra
+    veGoc(Y_DIR, Y_STP, Y_STOP, TIME_SPEED_HIGH);
+    QR_Read_CMD(); // Đọc mã vạch
+    veGoc(X_DIR, X_STP, X_STOP, TIME_SPEED_LOW);
+    FB_QuayLen();                                              // Quay Lên
+    delay(1000); // Chờ đọc QR code ổn định
+    QRcodeSach = QR_Read_Value();
+    if ( QRcodeSach == "Error")
+    {
+      MaSach = "000";
+      TenGoiNhoSach = "Khong Doc Duoc!!";
+    }
+    else
+    {
+      MaSach = QRcodeSach.substring(0, 3);
+      TenGoiNhoSach = QRcodeSach.substring(4, QRcodeSach.length()-1);
+    }
+    lcd.clear();
+    LCD_GhiChuoi(0,0,"Ma Sach Muon:   ");
+    LCD_GhiChuoi(13,0,MaSach);
+    LCD_GhiChuoi(0,1,TenGoiNhoSach);
+    FB_DayMangRa();     // Đẩy máng sách ra
+    digitalWrite(EN, HIGH);
+    // CHờ sách được lấy
+    previousMillis = millis();
+    while ((digitalRead(MangSach) == SS_CoSach) && ((millis() - previousMillis) < TIMEOUT_SS_PHAT_HIEN_SACH));
+    delay(2000);
+    FB_ThuMangVe(); // Thu máng sách về
+  }
 }
 
 // Hàm trả sách
 void RUN_TraSach()
 {
-  lcd.setCursor(0,0)            ; // Chọn vị trí con trỏ (cột,hàng)
-  lcd.print("Dang Thuc Hien: ") ; 
-  lcd.setCursor(0,1)            ;
-  lcd.print("Tra Sach O So   ") ;
-  lcd.setCursor(15,1)           ;
-  lcd.print(String(viTriSach))  ;
+  LCD_DangTraSach();
   // Về gốc
   digitalWrite(EN, LOW);
-  veGoc(X_DIR, X_STP, X_STOP,TIME_SPEED_MID);
   veGoc(Y_DIR, Y_STP, Y_STOP,TIME_SPEED_HIGH);
+  veGoc(X_DIR, X_STP, X_STOP,TIME_SPEED_MID);
   step_X = 1;
   step_Y = 1;
-  delay(500);
+  delay(100);
   FB_DayMangRa(); // Đẩy máng sách ra
+  delay(2000);
   // CHờ sách được đưa vào
   Serial.print("Mang Sach:");
   Serial.println(digitalRead(MangSach));
@@ -104,6 +126,7 @@ void RUN_TraSach()
     FB_ThuMangVe(); // Đẩy máng sách vào
     FB_QuayXuong(); // Quay Xuong
     // Đến vị trí trả sách
+    veGoc(X_DIR, X_STP, X_STOP,TIME_SPEED_MID); //  về lại gốc
     stepRun(true, X_DIR, X_STP, X_Index[viTriSach], TIME_SPEED_MID);               // Chạy đến tọa độ X
     stepRun(true, Y_DIR, Y_STP, Y_Index[viTriSach] + Y_tra_sach, TIME_SPEED_HIGH); // Nâng lên tọa độ Y
     step_X = 2;
@@ -134,9 +157,10 @@ void RUN_TraSach()
 
 void setup() {
   Serial.begin(9600);            // toc do cong noi tiep với máy tính
-  finger.begin(57600);          // toc do cong noi tiep với cảm biến siêu âm
-  QRcodeSerial.begin(9600);          // toc do cong noi tiep với đầu đọc QRcode
+  finger.begin(57600);          // toc do cong noi tiep với cảm biến vân tay
+  QRcodeSerial.begin(9600);     // toc do cong noi tiep với đầu đọc QRcode
   Wire.begin();              
+  delay(50);          // Chờ thiết lập
   // Input cum ra vao lay sach
   pinMode(FB_LimitP,INPUT_PULLUP);
   pinMode(FB_LimitN,INPUT_PULLUP);
@@ -205,10 +229,7 @@ void loop()
     // Muon Sach
     if(customKey == 'A')
     {
-      lcd.setCursor(0,0)            ; // Chọn vị trí con trỏ (cột,hàng)
-      lcd.print("Ban Chon :      ") ; 
-      lcd.setCursor(0,1)            ;
-      lcd.print("   A : Muon Sach") ;
+      LCD_MuonSach();
       HanhDong = 1;
       delay(2000);
       LCD_NhapSo();
@@ -216,10 +237,7 @@ void loop()
     // Tra sach
     if(customKey == 'B')
     {
-      lcd.setCursor(0,0)            ; // Chọn vị trí con trỏ (cột,hàng)
-      lcd.print("Ban Chon :      ") ; 
-      lcd.setCursor(0,1)            ;
-      lcd.print("   B :  Tra Sach") ;
+      LCD_TraSach();
       HanhDong = 2;
       delay(2000);
       LCD_NhapSo();
@@ -288,6 +306,30 @@ void loop()
       chayDiemY(viTriDiChuyen);
     }
 
+    // Máng sách đẩy ra
+    if (dataIn.startsWith("MANGRA"))
+    {
+      FB_DayMangRa();
+    }
+
+     // Máng sách thu vào
+    if (dataIn.startsWith("MANGVAO"))
+    {
+      FB_ThuMangVe();
+    }
+
+    // Tay gạt đẩy vào
+    if (dataIn.startsWith("GATVAO"))
+    {
+      FB_DayVao();
+    }
+
+     // Tay gạt đẩy vào
+    if (dataIn.startsWith("GATRA"))
+    {
+      FB_DayRa();
+    }
+
     // Đặt thời gian cho đồng hồ
     if (dataIn.startsWith("STIME"))
     {
@@ -320,6 +362,8 @@ void loop()
     if (dataIn.startsWith("QRC"))
     {
       QR_Read_CMD();
+      delay(2000); //  Chờ đọc QR
+      QR_Read_Value();
     }
 
   }
