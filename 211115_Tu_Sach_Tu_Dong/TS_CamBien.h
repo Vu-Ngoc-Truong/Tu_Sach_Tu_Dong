@@ -43,7 +43,7 @@ void LCD_NhapSo();
 
 // Hàm cho cảm biến vân tay
 void VT_Info() ;
-uint8_t VT_Lay_ID();
+int VT_Lay_ID();
 uint8_t VT_Lay_ID_CT();
 void VT_LED_OFF();
 void VT_LED_ON();
@@ -240,6 +240,7 @@ void LCD_NhapSo()
     char customKey; // Biến đọc giá trị nút ấn
     lcd.cursor();   // Hiển thị con trỏ
     lcd.blink();    // Nhap nhay con tro
+    previousMillis = millis();
     do
     {
         customKey = customKeypad.getKey();
@@ -312,9 +313,18 @@ void LCD_NhapSo()
         }
         }
 
-    } while ((customKey != '*') && (customKey != '#')); // thoat khi phim # được ấn
-    lcd.noBlink();                                      // Tắt nhấp nháy con trỏ
-    lcd.noCursor();                                     // Ẩn con trỏ
+    } while ((customKey != '*') && (customKey != '#') && ((millis() - previousMillis) < TIMEOUT_CHO_NHAP_PHIM)); // thoat khi phim # được ấn
+    lcd.noBlink();                                                                                               // Tắt nhấp nháy con trỏ
+    lcd.noCursor();                                                                                              // Ẩn con trỏ
+    if ((millis() - previousMillis) >= TIMEOUT_CHO_NHAP_PHIM)
+        {
+            HanhDong = 0;
+            lcd.setCursor(0, 1);
+            lcd.print("Huy Giao Dich!!!");
+            delay(2000);
+            LCD_ChonGD();
+        }
+
     delay(1000);
 }
 
@@ -366,7 +376,7 @@ void VT_Info()
 }
 
 // Hàm lấy ID  trả về -1 nếu lỗi, ok trả về giá trị ID
-uint8_t VT_Lay_ID()
+int VT_Lay_ID()
 {
     uint8_t p = finger.getImage();
     if (p != FINGERPRINT_OK)
@@ -381,9 +391,9 @@ uint8_t VT_Lay_ID()
         return -1;
 
     // found a match!
-    Serial.print("Found ID #");
+    Serial.print("Tim thay ID #");
     Serial.print(finger.fingerID);
-    Serial.print(" with confidence of ");
+    Serial.print(" voi do tin cay ");
     Serial.println(finger.confidence);
     return finger.fingerID;
 }

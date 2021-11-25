@@ -63,7 +63,8 @@ byte colPins[COLS] = {A11, A10, A9, A8}   ;   //connect to the column pinouts of
 #define Servo2_Pos1 20          // Vị trí 0 của động cơ xoay tay gạt
 
 // Timeout cho các hoạt động
-#define TIMEOUT_SS_PHAT_HIEN_SACH 15000     // ms
+#define TIMEOUT_SS_PHAT_HIEN_SACH  15000     // ms
+#define TIMEOUT_CHO_NHAP_PHIM      10000          // Thoi gian chờ người dùng ấn phím
 
 // Trạng thái cảm biến
 #define SS_CoSach 0         // Trạng thái sensor khi máng có sách

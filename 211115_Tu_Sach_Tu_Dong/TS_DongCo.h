@@ -24,7 +24,7 @@ int step_Y = 0; // Động cơ lên xuống
 
 // >>>>>>>>> Các tọa độ trục ( Xung)  <<<<<<<
 // Toa do truc X cho cac vi tri sach 0-9  
-int X_Index[10] = {10,475,950,1425,1905,20,490,955,1425,1915};
+int X_Index[10] = {10,475,960,1430,1905,20,490,955,1425,1915};
 // toa do truc Y cho cac vi tri lay sach 0-9
 int Y_Index[10] = {0,0,0,0,0,6500,6500,6500,6475,6450} ; // 6500 ~ 260 mm
 // Toa do chenh lech giua vi tri lay va tra sach

@@ -12,10 +12,16 @@ int Status = 0 ;
 String QRcodeSach ; // Chuỗi ký tự QR code của sách
 String MaSach;      // Mã số của sách 001 --> 255
 String TenGoiNhoSach; // Tên gợi nhớ của sách (bé hơn 16 ký tự)
+bool coPhimAn ;   // Báo có phím ấn được ấn
 
 // Biến liên quan đến vân tay
 bool ID_OK = false;  // True Nếu ID hợp lệ 
 int VTmaID; // ID cua người đang thực hiện
+// Biến liên quan đến  EEPROM
+bool eeFull; // Báo bộ nhớ đã được sử dụng hết hay chưa
+int eeAddr; // Con trỏ địa chỉ EEPROM
+int eeSoGiaoDichOK ; // Số giao dịch thành công
+int eeDiaChiLuuTiepTheo; // Địa chỉ lưu cho giao dịch tiếp theo
 
 // Về gốc toàn máy
 void VeGocAll()
@@ -24,7 +30,7 @@ void VeGocAll()
   FB_DayRa();    // Đẩy tay gạt vào
   myservo1.write(Servo1_Pos0);    // Thu máng sách vào
   veGoc(Y_DIR, Y_STP, Y_STOP,TIME_SPEED_HIGH);  // Hạ bộ gắp sách xuống
-  veGoc(X_DIR, X_STP, X_STOP,TIME_SPEED_MID);  // Về gốc trục X
+  veGoc(X_DIR, X_STP, X_STOP,TIME_SPEED_LOW);  // Về gốc trục X
   step_X = 1;
   step_Y = 1;
   digitalWrite(EN, HIGH);
@@ -61,8 +67,18 @@ void RUN_LaySach()
   {
     LCD_DangLaySach();
     // Den vi tri lay sach
-    stepRun(true, X_DIR, X_STP, X_Index[viTriSach], TIME_SPEED_LOW);  // Chay den toa do X
-    stepRun(true, Y_DIR, Y_STP, Y_Index[viTriSach], TIME_SPEED_HIGH); // Nang len toa do Y
+    if (viTriSach == 5)
+    {
+      stepRun(true, X_DIR, X_STP, X_Index[1], TIME_SPEED_LOW);          // Tránh đi lên thẳng vướng vào tấm mica
+      stepRun(true, Y_DIR, Y_STP, Y_Index[viTriSach], TIME_SPEED_HIGH); // Nâng lên tọa độ Y
+      veGoc(X_DIR, X_STP, X_STOP, TIME_SPEED_LOW);                      //  về lại gốc cho X
+      stepRun(true, X_DIR, X_STP, X_Index[viTriSach], TIME_SPEED_LOW) ;  // Chạy đến tọa độ X
+    }
+    else
+    {
+      stepRun(true, X_DIR, X_STP, X_Index[viTriSach], TIME_SPEED_LOW) ;  // Chay den toa do X
+      stepRun(true, Y_DIR, Y_STP, Y_Index[viTriSach], TIME_SPEED_HIGH); // Nang len toa do Y
+    }
     step_X = 2;
     step_Y = 2;
     delay(50);
@@ -73,6 +89,10 @@ void RUN_LaySach()
     FB_Dung();
     FB_QuayXuong(); // Quay Xuong
     FB_DayRa();     // Đi ra
+    if ( viTriSach == 5 )
+    {
+      stepRun(true, X_DIR, X_STP, X_Index[1], TIME_SPEED_LOW);  // Tránh đi lên thẳng vướng vào tấm mica
+    }
     veGoc(Y_DIR, Y_STP, Y_STOP, TIME_SPEED_HIGH);
     QR_Read_CMD(); // Đọc mã vạch
     veGoc(X_DIR, X_STP, X_STOP, TIME_SPEED_LOW);
@@ -110,7 +130,7 @@ void RUN_TraSach()
   // Về gốc
   digitalWrite(EN, LOW);
   veGoc(Y_DIR, Y_STP, Y_STOP,TIME_SPEED_HIGH);
-  veGoc(X_DIR, X_STP, X_STOP,TIME_SPEED_MID);
+  veGoc(X_DIR, X_STP, X_STOP,TIME_SPEED_LOW);
   step_X = 1;
   step_Y = 1;
   delay(100);
@@ -128,11 +148,41 @@ void RUN_TraSach()
     Serial.print("Co sach trong mang");
     delay(3000);    // Chờ ổn định
     FB_ThuMangVe(); // Đẩy máng sách vào
+    QR_Read_CMD(); // Đọc mã vạch
+    delay(2000); // Chờ đọc mã vach
+    QRcodeSach = QR_Read_Value();
+    if ( QRcodeSach == "Error")
+    {
+      MaSach = "000";
+      TenGoiNhoSach = "Khong Doc Duoc!!";
+    }
+    else
+    {
+      MaSach = QRcodeSach.substring(0, 3);
+      TenGoiNhoSach = QRcodeSach.substring(4, QRcodeSach.length()-1);
+    }
+    lcd.clear();
+    LCD_GhiChuoi(0,0,"Ma Sach Tra:   ");
+    LCD_GhiChuoi(13,0,MaSach);
+    LCD_GhiChuoi(0,1,TenGoiNhoSach);
+    delay(2000);
+    LCD_DangTraSach();
     FB_QuayXuong(); // Quay Xuong
     // Đến vị trí trả sách
-    veGoc(X_DIR, X_STP, X_STOP,TIME_SPEED_MID); //  về lại gốc
-    stepRun(true, X_DIR, X_STP, X_Index[viTriSach], TIME_SPEED_MID);               // Chạy đến tọa độ X
+    veGoc(X_DIR, X_STP, X_STOP,TIME_SPEED_LOW); //  về lại gốc
+    if ( viTriSach == 5 )
+    {
+      stepRun(true, X_DIR, X_STP, X_Index[1], TIME_SPEED_LOW);  // Tránh đi lên thẳng vướng vào tấm mica
+      stepRun(true, Y_DIR, Y_STP, Y_Index[viTriSach] + Y_tra_sach, TIME_SPEED_HIGH); // Nâng lên tọa độ Y
+      veGoc(X_DIR, X_STP, X_STOP,TIME_SPEED_LOW); //  về lại gốc cho X
+      stepRun(true, X_DIR, X_STP, X_Index[viTriSach], TIME_SPEED_LOW);               // Chạy đến tọa độ X
+    }
+    else
+    {
+
+    stepRun(true, X_DIR, X_STP, X_Index[viTriSach], TIME_SPEED_LOW);               // Chạy đến tọa độ X
     stepRun(true, Y_DIR, Y_STP, Y_Index[viTriSach] + Y_tra_sach, TIME_SPEED_HIGH); // Nâng lên tọa độ Y
+    }
     step_X = 2;
     step_Y = 2;
     delay(100);
@@ -143,8 +193,13 @@ void RUN_TraSach()
     FB_QuayLen(); // Quay Lên
     FB_DayRa();   // Đi ra
     // Về gốc
+    if ( viTriSach == 5 )
+    {
+      stepRun(true, X_DIR, X_STP, X_Index[1], TIME_SPEED_LOW);  // Tránh đi lên thẳng vướng vào tấm mica
+    }
+
     veGoc(Y_DIR, Y_STP, Y_STOP, TIME_SPEED_HIGH);
-    veGoc(X_DIR, X_STP, X_STOP, TIME_SPEED_MID);
+    veGoc(X_DIR, X_STP, X_STOP, TIME_SPEED_LOW);
   }
   else
   // Nếu không có sách trong máng
@@ -158,31 +213,61 @@ void RUN_TraSach()
   
 }
 
+// Lưu dữ liệu giao dịch vào EEPROM nếu giao dịch thành công
+void luuDuLieuGD()
+{
+    // if ((  (EE_addr <= EEPROM.length()-3))// save every 100* Update_power_time
+    // {
+    // int Batt_Voltage = Read_Battery_Voltage() * 1000.0;
+    // int Batt_Current = Read_CurrentCharging() * 1000.0;
+    // EEPROM.write(EE_addr, Batt_Voltage / 256);     // Save high byte of Battery Voltage
+    // EEPROM.write(EE_addr + 1, Batt_Voltage % 256); // Save low byte of Battery Voltage
+    // EEPROM.write(EE_addr + 2, Batt_Current / 256); // Save high byte of Battery Voltage
+    // EEPROM.write(EE_addr + 3, Batt_Current % 256); // Save low byte of Battery Voltage
+    // EE_addr += 4;
+    // count = 0;
+    // Serial.println("SAVE DATA INTO EEPROM");
+    // }
+}
+
+// Đọc dữ liệu giao dịch từ EEPROM
+void docDulieuGD()
+{
+  // Tìm trong EEPROM số lượng giao dịch
+  // In các giao dịch ra màn hình
+}
+
 // Hàm đọc phím ấn chọn GD
 void DocPhimAn()
 {
-  // Đọc phím được ấn
-  char customKey = customKeypad.getKey();
-  if (customKey)
-  {
-    Serial.println(customKey);
-    // Muon Sach
-    if(customKey == 'A')
+    previousMillis = millis();
+    while ((millis() - previousMillis) < TIMEOUT_CHO_NHAP_PHIM)
     {
-      LCD_MuonSach();
-      HanhDong = 1;
-      delay(2000);
-      LCD_NhapSo();
+      // Đọc phím được ấn
+      char customKey = customKeypad.getKey();
+      if (customKey)
+      {
+        Serial.println(customKey);
+        // Muon Sach
+        if (customKey == 'A')
+        {
+          LCD_MuonSach();
+          HanhDong = 1;
+          delay(2000);
+          LCD_NhapSo();
+          break;
+        }
+        // Tra sach
+        if (customKey == 'B')
+        {
+          LCD_TraSach();
+          HanhDong = 2;
+          delay(2000);
+          LCD_NhapSo();
+          break;
+        }
+      }
     }
-    // Tra sach
-    if(customKey == 'B')
-    {
-      LCD_TraSach();
-      HanhDong = 2;
-      delay(2000);
-      LCD_NhapSo();
-    }
-  }
 }
 
 void setup() {
@@ -198,6 +283,9 @@ void setup() {
   pinMode(RUN_P,INPUT_PULLUP);
   pinMode(RUN_N,INPUT_PULLUP);
   pinMode(MangSach,INPUT_PULLUP);
+  pinMode(X_STOP, INPUT_PULLUP);
+  pinMode(Y_STOP, INPUT_PULLUP);
+  pinMode(VT_Touch, INPUT_PULLUP);
 
   // Output
   //pinMode(LED_BUILTIN, OUTPUT);  // Led bao chan D13
@@ -216,25 +304,23 @@ void setup() {
 
   pinMode(Y_DIR, OUTPUT);
   pinMode(Y_STP, OUTPUT);
-
-  pinMode(X_STOP, INPUT_PULLUP);
-  pinMode(Y_STOP, INPUT_PULLUP);
-
-  // Đọc thời gian hiện tại
-  readTime();
   pinMode(EN, OUTPUT);
-  // Nháy đèn cảm biến vân tay
-  VT_LED_ON();
-  delay(100);
-  VT_LED_OFF();
-  VT_Info();
+
+  // Setup trạng thái các chân ban đầu
+  digitalWrite(EN, HIGH);   // Dừng các động cơ bước
   // Thời gian
   Wire.begin();
   // initialize the LCD
 	lcd.begin();
-	// Turn on the blacklight and print a message.
-	lcd.backlight();
+  
+  readTime();   // Đọc thời gian hiện tại
+  VT_Info(); // Đọc thông tin cảm biến vân tay
+  VT_LED_ON();  // Nháy đèn cảm biến vân tay
+  delay(100);
+  VT_LED_OFF();
+
 	// Hiển thị màn hình khởi động
+	lcd.backlight(); // Turn on the blacklight and print a message.
 	lcd.print("!!! WELLCOME !!!") ; // Nội dung dòng 1
   lcd.setCursor(0,1)            ; // Chọn dòng 2
   lcd.print("TU SACH TU DONG ") ; // Nội dung dòng 2
@@ -245,31 +331,40 @@ void setup() {
 
 void loop()
 {
-  
-  //VT_Lay_ID() :
-  if ( digitalRead(VT_Touch) == 1) // Có người chạm
-  {
-    
-    int Sdata;
-    Sdata = VT_Lay_ID_CT();
-    LCD_GhiChuoi(0,1,"Van tay ID :"+ String(Sdata)+"   ");
-    delay(1000);
-    VT_LED_ON();
-    delay(100);
-    VT_LED_OFF();
-    delay(100);
-    VT_LED_ON();
-    delay(100);
-    VT_LED_OFF();
-    delay(100);
 
+  //VT_Lay_ID() :
+  if (digitalRead(VT_Touch) == 1) // Có người chạm
+  {
+    VT_LED_ON(); // Sáng cảm biến vân tay
+    VTmaID = VT_Lay_ID();
+    Serial.println(VTmaID);
+    delay(100);
+    VT_LED_OFF();
+    if (VTmaID == -1)
+    {
+      Serial.println("Khong thay van tay!");
+      LCD_GhiChuoi(0, 1, "VT khong hop le!");
+      delay(2000);
+    }
+    if ((VTmaID > 0) && (VTmaID < 128))
+    {
+      LCD_GhiChuoi(0, 1, "Van tay ID :" + String(VTmaID) + "   ");
+      delay(2000);
+      LCD_ChonGD(); // lên màn hình chọn giao dich
+      // CHờ sách được lấy
+      DocPhimAn();
+    }
+
+    // VT_LED_ON();
+    // delay(100);
+    // VT_LED_OFF();
   }
-  else
+  else // Khi không có ai chạm
   {
     LCD_ChoGD(readTime());
     delay(1000);
   }
-  
+
   //Đọc lệnh từ serial
   if (Serial.available() > 0)
   {      // Check for incomding data
@@ -382,7 +477,6 @@ void loop()
     }
     
     // Đọc QRcode
-    // Lệnh chạy đến vị trí của trục Y
     if (dataIn.startsWith("QRC"))
     {
       QR_Read_CMD();
@@ -412,8 +506,6 @@ void loop()
       VT_LED_OFF();
       delay(500);
     }
-
-
   }
 
   // >>>>>>>>>>>>>>>  Lấy sách  <<<<<<<<<<<<<<<
