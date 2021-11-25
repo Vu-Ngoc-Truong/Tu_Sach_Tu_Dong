@@ -13,6 +13,10 @@ String QRcodeSach ; // Chuỗi ký tự QR code của sách
 String MaSach;      // Mã số của sách 001 --> 255
 String TenGoiNhoSach; // Tên gợi nhớ của sách (bé hơn 16 ký tự)
 
+// Biến liên quan đến vân tay
+bool ID_OK = false;  // True Nếu ID hợp lệ 
+int VTmaID; // ID cua người đang thực hiện
+
 // Về gốc toàn máy
 void VeGocAll()
 {
@@ -154,6 +158,32 @@ void RUN_TraSach()
   
 }
 
+// Hàm đọc phím ấn chọn GD
+void DocPhimAn()
+{
+  // Đọc phím được ấn
+  char customKey = customKeypad.getKey();
+  if (customKey)
+  {
+    Serial.println(customKey);
+    // Muon Sach
+    if(customKey == 'A')
+    {
+      LCD_MuonSach();
+      HanhDong = 1;
+      delay(2000);
+      LCD_NhapSo();
+    }
+    // Tra sach
+    if(customKey == 'B')
+    {
+      LCD_TraSach();
+      HanhDong = 2;
+      delay(2000);
+      LCD_NhapSo();
+    }
+  }
+}
 
 void setup() {
   Serial.begin(9600);            // toc do cong noi tiep với máy tính
@@ -161,6 +191,7 @@ void setup() {
   QRcodeSerial.begin(9600);     // toc do cong noi tiep với đầu đọc QRcode
   Wire.begin();              
   delay(50);          // Chờ thiết lập
+  
   // Input cum ra vao lay sach
   pinMode(FB_LimitP,INPUT_PULLUP);
   pinMode(FB_LimitN,INPUT_PULLUP);
@@ -188,19 +219,15 @@ void setup() {
 
   pinMode(X_STOP, INPUT_PULLUP);
   pinMode(Y_STOP, INPUT_PULLUP);
-  pinMode(START, INPUT_PULLUP);
-  pinMode(STOP, INPUT_PULLUP);
 
   // Đọc thời gian hiện tại
   readTime();
-
   pinMode(EN, OUTPUT);
   // Nháy đèn cảm biến vân tay
   VT_LED_ON();
   delay(100);
   VT_LED_OFF();
   VT_Info();
-  
   // Thời gian
   Wire.begin();
   // initialize the LCD
@@ -214,38 +241,35 @@ void setup() {
   VeGocAll();
   digitalWrite(EN, HIGH);
   delay(2000);
-  LCD_ChonGD();
-  delay(1000);
-
 }
 
 void loop()
 {
-  // Đọc phím được ấn
-  char customKey = customKeypad.getKey();
-  if (customKey)
+  
+  //VT_Lay_ID() :
+  if ( digitalRead(VT_Touch) == 1) // Có người chạm
   {
-    Serial.println(customKey);
-    // Muon Sach
-    if(customKey == 'A')
-    {
-      LCD_MuonSach();
-      HanhDong = 1;
-      delay(2000);
-      LCD_NhapSo();
-    }
-    // Tra sach
-    if(customKey == 'B')
-    {
-      LCD_TraSach();
-      HanhDong = 2;
-      delay(2000);
-      LCD_NhapSo();
+    
+    int Sdata;
+    Sdata = VT_Lay_ID_CT();
+    LCD_GhiChuoi(0,1,"Van tay ID :"+ String(Sdata)+"   ");
+    delay(1000);
+    VT_LED_ON();
+    delay(100);
+    VT_LED_OFF();
+    delay(100);
+    VT_LED_ON();
+    delay(100);
+    VT_LED_OFF();
+    delay(100);
 
-    }
+  }
+  else
+  {
+    LCD_ChoGD(readTime());
+    delay(1000);
   }
   
-
   //Đọc lệnh từ serial
   if (Serial.available() > 0)
   {      // Check for incomding data
@@ -365,6 +389,30 @@ void loop()
       delay(2000); //  Chờ đọc QR
       QR_Read_Value();
     }
+    // Lệnh đọc ID vân tay
+    if (dataIn.startsWith("VTDOC"))
+    {
+      VT_Lay_ID_CT();
+    }
+
+    if (dataIn.startsWith("VTDOC1"))
+    {
+      VT_Lay_ID();
+    }
+    // Lệnh đăng ký cho vân tay
+    if (dataIn.startsWith("VTDK"))
+    {
+      VT_DangKyID();
+      delay(5000);
+    }
+
+    // Lệnh tắt LED
+    if (dataIn.startsWith("VTLEDOFF"))
+    {
+      VT_LED_OFF();
+      delay(500);
+    }
+
 
   }
 

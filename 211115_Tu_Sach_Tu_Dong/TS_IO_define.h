@@ -10,8 +10,8 @@
 #define DCMotorN 4  // DC Motor -
 #define FB_LimitP  A0 // Công tắc giới hạn thuận
 #define FB_LimitN  A3 // Công tắc giới hạn ngược
-#define RUN_P A1  // Nút ấn quay chiều dương
-#define RUN_N A2 // Nút ấn quay chiều âm
+#define RUN_P 23  // Nút ấn quay chiều dương
+#define RUN_N 25 // Nút ấn quay chiều âm
 
 //Step pin
 #define X_STP       2
@@ -30,11 +30,9 @@
 
 // Cảm biến phát hiện có sách trong máng
 #define MangSach    11
+#define VT_Touch     A1
 
 
-// Nút ấn điều khiển
-#define START A0
-#define STOP  A2
 
 /**************************************************************************/
 // Khai báo số hàng và cột của Keypad
@@ -54,18 +52,18 @@ byte colPins[COLS] = {A11, A10, A9, A8}   ;   //connect to the column pinouts of
 
 /**************************************************************************/
 // Các cổng Serial
-#define FingerSerial Serial2        // Cổng Serial giao tiếp với cảm biến vân tay
 #define QRcodeSerial Serial1        // Cổng Serial giao tiếp với Barcode Sensor
+#define FingerSerial Serial2        // Cổng Serial giao tiếp với cảm biến vân tay
 
 /**************************************************************************/
 // Khai báo các hằng số
 #define Servo1_Pos0 0          // Vị trí 0 của động cơ đẩy máng sách
 #define Servo1_Pos1 140          // Vị trí 0 của động cơ  đẩy máng sách
 #define Servo2_Pos0 120          // Vị trí 0 của động cơ xoay tay gạt
-#define Servo2_Pos1 15          // Vị trí 0 của động cơ xoay tay gạt
+#define Servo2_Pos1 20          // Vị trí 0 của động cơ xoay tay gạt
 
 // Timeout cho các hoạt động
-#define TIMEOUT_SS_PHAT_HIEN_SACH 10000     // ms
+#define TIMEOUT_SS_PHAT_HIEN_SACH 15000     // ms
 
 // Trạng thái cảm biến
 #define SS_CoSach 0         // Trạng thái sensor khi máng có sách

@@ -10,8 +10,8 @@
 #define CHU_VI_PULY  40     // 40 mm
 #define XUNG_1VONG  200     // 200 xung / vòng
 
-float LX_XUNG_MM = XUNG_1VONG / BUOC_VIT_ME; // Số xung trục lên xuống di chuyển 1 mm =25
-float TP_XUNG_MM = XUNG_1VONG / CHU_VI_PULY; // Số xung trục trái phải di chuyển 1 mm =5
+float LX_XUNG_MM = XUNG_1VONG / BUOC_VIT_ME; // Số xung trục lên xuống Y di chuyển 1 mm =25
+float TP_XUNG_MM = XUNG_1VONG / CHU_VI_PULY; // Số xung trục trái phải X di chuyển 1 mm =5
 
 // Thời gian delay khi xuất xung cho đông cơ Step (uS)
 #define TIME_SPEED_LOW  1000    
@@ -23,12 +23,13 @@ int step_X = 0; // Động cơ trái phải
 int step_Y = 0; // Động cơ lên xuống
 
 // >>>>>>>>> Các tọa độ trục ( Xung)  <<<<<<<
-// Toa do truc X cho cac vi tri sach 0-9
-int X_Index[10] = {0,470,950,1425,1905,20,490,955,1425,1915};
+// Toa do truc X cho cac vi tri sach 0-9  
+int X_Index[10] = {10,475,950,1425,1905,20,490,955,1425,1915};
 // toa do truc Y cho cac vi tri lay sach 0-9
 int Y_Index[10] = {0,0,0,0,0,6500,6500,6500,6475,6450} ; // 6500 ~ 260 mm
 // Toa do chenh lech giua vi tri lay va tra sach
-int Y_tra_sach = 85 ; // độ cao giữa trả sách và lấy sách theo xung
+int Y_tra_sach = 80 ; // độ cao giữa trả sách và lấy sách theo xung
+int X_mangSachra = 75;  // Vị trí đẩy máng sách ra của trục X
 int toa_do_X = 0; // Toa do hien tai cua X theo xung
 int toa_do_Y = 0; // Toa do hien tai cua Y theo xung
 
@@ -223,11 +224,13 @@ void FB_QuayLen()
 // Xuất sách ra
 void FB_DayMangRa()
 {
-for (int j=Servo1_Pos0; j <= Servo1_Pos1; j++)
-    {
-        myservo1.write(j);
-        delay(10);
-    }
+    veGoc(X_DIR, X_STP, X_STOP, TIME_SPEED_LOW);
+    stepRun(true, X_DIR, X_STP, X_mangSachra, TIME_SPEED_LOW); // Chay den toa do X
+    for (int j=Servo1_Pos0; j <= Servo1_Pos1; j++)
+        {
+            myservo1.write(j);
+            delay(10);
+        }
 }
 
 // Thu sách về

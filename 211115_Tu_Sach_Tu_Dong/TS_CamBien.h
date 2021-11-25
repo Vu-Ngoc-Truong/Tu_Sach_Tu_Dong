@@ -22,6 +22,7 @@ LiquidCrystal_I2C lcd(0x27, 16, 2); // 0x27 la dia chi I2C cua LCD
 // --------------------------
 // Khởi tạo cảm biến vân tay
 Adafruit_Fingerprint finger = Adafruit_Fingerprint(&FingerSerial);
+uint8_t id;
 
 // --------------------------
 // Khởi tạo đồng hồ thời gian thực
@@ -32,10 +33,11 @@ DS3231 Clock;
 // >>>>>>>>>>> Khai báo các hàm
 
 // Hàm cho RTC
-void readTime();
+String readTime();
 void setTime(String stime);
 
 // Hàm cho LCD
+void LCD_GhiChuoi(int Cot, int Hang, String CacKyTu);
 void LCD_ChonGD();
 void LCD_NhapSo();
 
@@ -46,11 +48,16 @@ uint8_t VT_Lay_ID_CT();
 void VT_LED_OFF();
 void VT_LED_ON();
 
-// Hàm cho cảm biến mã vạch
-
-
 /**************************************************************************/
 // Hàm đặt thời gian cho đồng hồ
+// Biến thời gian
+byte Year;
+byte Month;
+byte Day;
+//byte DoW;
+byte Hour;
+byte Minute;
+byte Second;
 void setTime(String stime)
 {
     byte Year;
@@ -103,27 +110,44 @@ void setTime(String stime)
     Clock.setSecond(Second);
 }
 
-void readTime()
+String readTime()
 {
     DateTime now = myRTC.now();
+    
+    String timeNow;
+    Year = now.year();
+    Month = now.month();
+    Day = now.day();
+    Hour = now.hour();
+    Minute = now.minute();
+    Second = now.second();
+    
+    timeNow = String(Day) + "/" + String(Month) + "   " + String(Hour)+":"+ String(Minute)+ ":" + String(Second) ;
+    Serial.println(timeNow);
+    // Serial.print(now.year(), DEC);
+    // Serial.print('/');
+    // Serial.print(now.month(), DEC);
+    // Serial.print('/');
+    // Serial.print(now.day(), DEC);
+    // Serial.print(' ');
+    // Serial.print(now.hour(), DEC);
+    // Serial.print(':');
+    // Serial.print(now.minute(), DEC);
+    // Serial.print(':');
+    // Serial.print(now.second(), DEC);
+    // Serial.println();
+    return timeNow;
 
-    Serial.print(now.year(), DEC);
-    Serial.print('/');
-    Serial.print(now.month(), DEC);
-    Serial.print('/');
-    Serial.print(now.day(), DEC);
-    Serial.print(' ');
-    Serial.print(now.hour(), DEC);
-    Serial.print(':');
-    Serial.print(now.minute(), DEC);
-    Serial.print(':');
-    Serial.print(now.second(), DEC);
-    Serial.println();
-    delay(100);
 }
 
 /**************************************************************************/
 // >>>>>>> Hàm cho LCD  <<<<<<<<
+// Ghi một chuỗi ra màn hình
+void LCD_GhiChuoi(int Cot, int Hang, String CacKyTu)
+{
+    lcd.setCursor(Cot, Hang); // Chọn vị trí con trỏ (cột,hàng)
+    lcd.print(CacKyTu);
+}
 
 // Giao diện chọn giao dịch
 void LCD_ChonGD()
@@ -132,6 +156,74 @@ void LCD_ChonGD()
     lcd.print("CHON GIAO DICH: ");
     lcd.setCursor(0, 1);
     lcd.print("A: Muon | B: Tra");
+}
+
+// LCD mượn sách
+void LCD_MuonSach()
+{
+    lcd.setCursor(0,0)            ; // Chọn vị trí con trỏ (cột,hàng)
+    lcd.print("Ban Chon :      ") ; 
+    lcd.setCursor(0,1)            ;
+    lcd.print("   A : Muon Sach") ;
+}
+
+// LCD trả sách
+void LCD_TraSach()
+{
+    lcd.setCursor(0, 0); // Chọn vị trí con trỏ (cột,hàng)
+    lcd.print("Ban Chon :      ");
+    lcd.setCursor(0, 1);
+    lcd.print("   B :  Tra Sach");
+}
+
+// LCD Hủy giao dich
+void LCD_HuyGD()
+{
+    lcd.setCursor(0, 0); // Chọn vị trí con trỏ (cột,hàng)
+    lcd.print("Ban Chon :      ");
+    lcd.setCursor(0, 1);
+    lcd.print("   B :  Tra Sach");
+}
+
+// LCD Đang lấy sách
+void LCD_DangLaySach()
+{
+    lcd.setCursor(0, 0); // Chọn vị trí con trỏ (cột,hàng)
+    lcd.print("Dang Thuc Hien: ");
+    lcd.setCursor(0, 1);
+    lcd.print("Lay Sach VT So  ");
+    lcd.setCursor(15, 1);
+    lcd.print(String(viTriSach));
+}
+
+// LCD Đang trả sách
+void LCD_DangTraSach()
+{
+    lcd.setCursor(0, 0); // Chọn vị trí con trỏ (cột,hàng)
+    lcd.print("Dang Thuc Hien: ");
+    lcd.setCursor(0, 1);
+    lcd.print("Tra Sach VT So  ");
+    lcd.setCursor(15, 1);
+    lcd.print(String(viTriSach));
+}
+
+// Giao diện cảnh báo
+void LCD_CanhBao(String Waning)
+{
+    lcd.setCursor(0, 0); // Chọn vị trí con trỏ (cột,hàng)
+    lcd.print("Xay ra loi:     ");
+    lcd.setCursor(0, 1);
+    lcd.print(Waning);
+}
+
+// Màn hình chờ giao dịch
+void LCD_ChoGD(String msg)
+{
+    lcd.clear();
+    lcd.setCursor(0, 0); // Chọn vị trí con trỏ (cột,hàng)
+    lcd.print("Tu Sach Tu Dong ");
+    lcd.setCursor(0, 1);
+    lcd.print(msg);
 }
 
 // Giao diện nhập số
@@ -375,6 +467,207 @@ uint8_t VT_Lay_ID_CT()
     return finger.fingerID;
 }
 
+// Hàm đọc số từ Serial
+uint8_t readnumber(void)
+{
+    uint8_t num = 0;
+
+    while (num == 0)
+    {
+        while (!Serial.available())
+            ;
+        num = Serial.parseInt();
+    }
+    return num;
+}
+
+// Hàm dang ky vân tay
+uint8_t getFingerprintEnroll()
+{
+
+    int p = -1;
+    Serial.print("Dang doi ngon tay hop le de dang ky cho ID #");
+    Serial.println(id);
+    while (p != FINGERPRINT_OK)
+    {
+        p = finger.getImage();
+        switch (p)
+        {
+        case FINGERPRINT_OK:
+            Serial.println("Da chup anh van tay xong!");
+            break;
+        case FINGERPRINT_NOFINGER:
+            Serial.println(".");
+            break;
+        case FINGERPRINT_PACKETRECIEVEERR:
+            Serial.println("Loi ket noi!!!");
+            break;
+        case FINGERPRINT_IMAGEFAIL:
+            Serial.println("Hinh anh loi!!!");
+            break;
+        default:
+            Serial.println("Loi khac!!!");
+            break;
+        }
+    }
+
+    // OK success!
+
+    p = finger.image2Tz(1);
+    switch (p)
+    {
+    case FINGERPRINT_OK:
+        Serial.println("Da chuyen doi anh OK!");
+        break;
+    case FINGERPRINT_IMAGEMESS:
+        Serial.println("Anh qua xau!!!");
+        return p;
+    case FINGERPRINT_PACKETRECIEVEERR:
+        Serial.println("Loi ket noi!!!");
+        return p;
+    case FINGERPRINT_FEATUREFAIL:
+        Serial.println("Khong the tim thay cac dau hieu tren van tay!!!");
+        return p;
+    case FINGERPRINT_INVALIDIMAGE:
+        Serial.println("Khong the tim thay cac dau hieu tren van tay!!!");
+        return p;
+    default:
+        Serial.println("Loi khac !!!");
+        return p;
+    }
+
+    Serial.println("Bo ngon tay ra!");
+    delay(2000);
+    p = 0;
+    while (p != FINGERPRINT_NOFINGER)
+    {
+        p = finger.getImage();
+    }
+    Serial.print("ID ");
+    Serial.println(id);
+    p = -1;
+    Serial.println("Dat lai cung mot ngon tay!");
+    while (p != FINGERPRINT_OK)
+    {
+        p = finger.getImage();
+        switch (p)
+        {
+        case FINGERPRINT_OK:
+            Serial.println("Da chup anh van tay xong!");
+            break;
+        case FINGERPRINT_NOFINGER:
+            Serial.print(".");
+            break;
+        case FINGERPRINT_PACKETRECIEVEERR:
+            Serial.println("Communication error");
+            break;
+        case FINGERPRINT_IMAGEFAIL:
+            Serial.println("Imaging error");
+            break;
+        default:
+            Serial.println("Unknown error");
+            break;
+        }
+    }
+
+    // OK success!
+
+    p = finger.image2Tz(2);
+    switch (p)
+    {
+    case FINGERPRINT_OK:
+        Serial.println("Anh da duoc chuyen doi OK!");
+        break;
+    case FINGERPRINT_IMAGEMESS:
+        Serial.println("Anh qua kem!!!");
+        return p;
+    case FINGERPRINT_PACKETRECIEVEERR:
+        Serial.println("Communication error");
+        return p;
+    case FINGERPRINT_FEATUREFAIL:
+        Serial.println("Khong the tim thay cac dau hieu tren van tay!!!");
+        return p;
+    case FINGERPRINT_INVALIDIMAGE:
+        Serial.println("Khong the tim thay cac dau hieu tren van tay!!!");
+        return p;
+    default:
+        Serial.println("Unknown error");
+        return p;
+    }
+
+    // OK converted!
+    Serial.print("Tao model cho #");
+    Serial.println(id);
+
+    p = finger.createModel();
+    if (p == FINGERPRINT_OK)
+    {
+        Serial.println("Ban in van tay phu hop!");
+    }
+    else if (p == FINGERPRINT_PACKETRECIEVEERR)
+    {
+        Serial.println("Communication error");
+        return p;
+    }
+    else if (p == FINGERPRINT_ENROLLMISMATCH)
+    {
+        Serial.println("Khong tim thay van tay!!!");
+        return p;
+    }
+    else
+    {
+        Serial.println("Unknown error");
+        return p;
+    }
+
+    Serial.print("ID ");
+    Serial.println(id);
+    p = finger.storeModel(id);
+    if (p == FINGERPRINT_OK)
+    {
+        Serial.println("Da luu!");
+    }
+    else if (p == FINGERPRINT_PACKETRECIEVEERR)
+    {
+        Serial.println("Loi ket noi!!!");
+        return p;
+    }
+    else if (p == FINGERPRINT_BADLOCATION)
+    {
+        Serial.println("Khong the luu tai vị tri nay!!!");
+        return p;
+    }
+    else if (p == FINGERPRINT_FLASHERR)
+    {
+        Serial.println("Loi khi ghi vao bo nho flash!!!");
+        return p;
+    }
+    else
+    {
+        Serial.println("Unknown error");
+        return p;
+    }
+
+    return true;
+}
+
+// Hàm đăng ký ID cho vân tay
+void VT_DangKyID()
+{
+    Serial.println("San sang de dang ky van tay!");
+    Serial.println("Nhap ID # (tu 1 - 127) ma ban muon luu ...");
+    id = readnumber();
+    if (id == 0)
+    {
+        Serial.println("ID phai khac 0"); // ID #0 not allowed, try again!
+        return;
+    }
+    Serial.print("Dang ky ID #");
+    Serial.println(id);
+
+    while (!getFingerprintEnroll())
+        ;
+}
 // Led cảm biến OFF
 void VT_LED_OFF()
 {
@@ -388,26 +681,33 @@ void VT_LED_ON()
 }
 
 // Hàm cho QR code
-String QR_Read_CMD()
+// Gửi lệnh đọc QR 
+void QR_Read_CMD()
 {
-    // 7E 00 08 01 00 02 01 AB CD
-    Serial1.write(0x7E);
-    Serial1.write(0x00);
-    Serial1.write(0x08);
-    Serial1.write(0x01);
-    Serial1.write(0x00);
-    Serial1.write(0x02);
-    Serial1.write(0x01);
-    Serial1.write(0xAB);
-    Serial1.write(0xCD);
+    // Command Triggered Mode
+    // Gửi lệnh : 7E 00 08 01 00 02 01 AB CD
+    // Sensor sẽ trả về “ 02 00 00 01 00 33 31” và bắt đầu quét mã
+    QRcodeSerial.write(0x7E);
+    QRcodeSerial.write(0x00);
+    QRcodeSerial.write(0x08);
+    QRcodeSerial.write(0x01);
+    QRcodeSerial.write(0x00);
+    QRcodeSerial.write(0x02);
+    QRcodeSerial.write(0x01);
+    QRcodeSerial.write(0xAB);
+    QRcodeSerial.write(0xCD);
+}
 
-    Serial.print("Ma Vach: ");
-    delay(2000);
+// Lấy giá trị đọc đọc từ QR code
+String QR_Read_Value()
+{
     String MaCode ;
-    if (Serial1.available() > 0)
+    if (QRcodeSerial.available() > 0)
     { // Check for incomding data
-        MaCode = Serial1.readString();
+        MaCode = QRcodeSerial.readString(); // Lấy thông tin từ QR code
         Serial.println(MaCode);
+        MaCode = MaCode.substring(7, MaCode.length());
+        if ( MaCode == "") return "Error";
     }
     return MaCode;
 }
