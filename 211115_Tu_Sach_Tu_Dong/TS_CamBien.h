@@ -302,7 +302,6 @@ void LCD_NhapSo()
             lcd.setCursor(0, 1);
             lcd.print("Huy Giao Dich!!!");
             delay(2000);
-            LCD_ChonGD();
             break;
         }
         case '#':
@@ -322,10 +321,7 @@ void LCD_NhapSo()
             lcd.setCursor(0, 1);
             lcd.print("Huy Giao Dich!!!");
             delay(2000);
-            LCD_ChonGD();
         }
-
-    delay(1000);
 }
 
 /**************************************************************************/

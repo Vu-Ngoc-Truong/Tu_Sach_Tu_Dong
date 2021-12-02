@@ -24,11 +24,11 @@ int step_Y = 0; // Động cơ lên xuống
 
 // >>>>>>>>> Các tọa độ trục ( Xung)  <<<<<<<
 // Toa do truc X cho cac vi tri sach 0-9  
-int X_Index[10] = {10,475,960,1430,1905,20,490,955,1425,1915};
+int X_Index[10] = {10,475,960,1430,1905,20,490,950,1420,1915};
 // toa do truc Y cho cac vi tri lay sach 0-9
-int Y_Index[10] = {0,0,0,0,0,6500,6500,6500,6475,6450} ; // 6500 ~ 260 mm
+int Y_Index[10] = {0,0,0,0,0,6500,6500,6500,6475,6450} ; // 6500 ~ 260 mm 25pul/1mm
 // Toa do chenh lech giua vi tri lay va tra sach
-int Y_tra_sach = 80 ; // độ cao giữa trả sách và lấy sách theo xung
+int Y_tra_sach = 90 ; // độ cao giữa trả sách và lấy sách theo xung
 int X_mangSachra = 75;  // Vị trí đẩy máng sách ra của trục X
 int toa_do_X = 0; // Toa do hien tai cua X theo xung
 int toa_do_Y = 0; // Toa do hien tai cua Y theo xung
