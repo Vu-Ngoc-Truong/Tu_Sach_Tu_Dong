@@ -3,7 +3,7 @@
 #define TSTD_CAMBIEN_H
 
 #include "TS_IO_define.h"
-#include <Wire.h> 
+#include <Wire.h>
 #include <DS3231.h>
 #include <LiquidCrystal_I2C.h>      // Thư viện cho LCD
 #include <Adafruit_Fingerprint.h>   // Thư viện cho cảm biến vân tay
@@ -58,6 +58,7 @@ byte Day;
 byte Hour;
 byte Minute;
 byte Second;
+
 void setTime(String stime)
 {
     byte Year;
@@ -113,7 +114,7 @@ void setTime(String stime)
 String readTime()
 {
     DateTime now = myRTC.now();
-    
+
     String timeNow;
     Year = now.year();
     Month = now.month();
@@ -121,7 +122,7 @@ String readTime()
     Hour = now.hour();
     Minute = now.minute();
     Second = now.second();
-    
+
     timeNow = String(Day) + "/" + String(Month) + "   " + String(Hour)+":"+ String(Minute)+ ":" + String(Second) ;
     Serial.println(timeNow);
     // Serial.print(now.year(), DEC);
@@ -162,7 +163,7 @@ void LCD_ChonGD()
 void LCD_MuonSach()
 {
     lcd.setCursor(0,0)            ; // Chọn vị trí con trỏ (cột,hàng)
-    lcd.print("Ban Chon :      ") ; 
+    lcd.print("Ban Chon :      ") ;
     lcd.setCursor(0,1)            ;
     lcd.print("   A : Muon Sach") ;
 }
@@ -687,7 +688,7 @@ void VT_LED_ON()
 }
 
 // Hàm cho QR code
-// Gửi lệnh đọc QR 
+// Gửi lệnh đọc QR
 void QR_Read_CMD()
 {
     // Command Triggered Mode

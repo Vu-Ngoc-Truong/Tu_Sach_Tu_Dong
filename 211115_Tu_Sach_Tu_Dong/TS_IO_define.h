@@ -26,7 +26,7 @@
 #define Y_STOP      10
 
 // Step Enable
-#define EN          8  
+#define EN          8
 
 // Cảm biến phát hiện có sách trong máng
 #define MangSach    11
@@ -44,7 +44,7 @@ char hexaKeys[ROWS][COLS] = {
 {'4', '5', '6', 'B'},
 {'7', '8', '9', 'C'},
 {'*', '0', '#', 'D'},
-}                       ;   
+}                       ;
 
 // Khai bao các chân sử dụng theo hàng và cột
 byte rowPins[ROWS] = {A15, A14, A13, A12} ;    //connect to the row pinouts of the keypad
@@ -61,6 +61,11 @@ byte colPins[COLS] = {A11, A10, A9, A8}   ;   //connect to the column pinouts of
 #define Servo1_Pos1 140          // Vị trí 0 của động cơ  đẩy máng sách
 #define Servo2_Pos0 120          // Vị trí 0 của động cơ xoay tay gạt
 #define Servo2_Pos1 20          // Vị trí 0 của động cơ xoay tay gạt
+
+// EEPROM Map
+#define ADDR_EEPROM_ADDR_SAVE 10        // Vị trí lưu địa chỉ cho giao dịch hiện tại
+#define ADDR_EEPROM_START_SAVE 1000     // Vị trí bắt đầu lưu giao dịch
+#define ADDR_EEPROM_END_SAVE   3000     // Vị trí kết thúc lưu giao dịch
 
 // Timeout cho các hoạt động
 #define TIMEOUT_SS_PHAT_HIEN_SACH  15000     // ms

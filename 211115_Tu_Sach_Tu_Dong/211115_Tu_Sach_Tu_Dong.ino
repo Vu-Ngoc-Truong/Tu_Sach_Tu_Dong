@@ -15,13 +15,17 @@ String TenGoiNhoSach; // Tên gợi nhớ của sách (bé hơn 16 ký tự)
 bool coPhimAn ;   // Báo có phím ấn được ấn
 
 // Biến liên quan đến vân tay
-bool ID_OK = false;  // True Nếu ID hợp lệ 
+bool ID_OK = false;  // True Nếu ID hợp lệ
 int VTmaID; // ID cua người đang thực hiện
+
 // Biến liên quan đến  EEPROM
 bool eeFull; // Báo bộ nhớ đã được sử dụng hết hay chưa
-int eeAddr; // Con trỏ địa chỉ EEPROM
+int eeAddrSave; // Con trỏ địa chỉ lưu giao dịch trong EEPROM
+int addrEEPROM; // địa chỉ truy xuất EEPROM
 int eeSoGiaoDichOK ; // Số giao dịch thành công
 int eeDiaChiLuuTiepTheo; // Địa chỉ lưu cho giao dịch tiếp theo
+
+
 
 // Về gốc toàn máy
 void VeGocAll()
@@ -34,6 +38,7 @@ void VeGocAll()
   step_X = 1;
   step_Y = 1;
   digitalWrite(EN, HIGH);
+
 }
 
 // Hàm lấy sách
@@ -109,17 +114,31 @@ void RUN_LaySach()
       MaSach = QRcodeSach.substring(0, 3);
       TenGoiNhoSach = QRcodeSach.substring(4, QRcodeSach.length()-1);
     }
+    // Hiển thị ra LCD
     lcd.clear();
     LCD_GhiChuoi(0,0,"Ma Sach Muon:   ");
     LCD_GhiChuoi(13,0,MaSach);
     LCD_GhiChuoi(0,1,TenGoiNhoSach);
-    FB_DayMangRa();     // Đẩy máng sách ra
-    digitalWrite(EN, HIGH);
-    // CHờ sách được lấy
-    previousMillis = millis();
-    while ((digitalRead(MangSach) == SS_CoSach) && ((millis() - previousMillis) < TIMEOUT_SS_PHAT_HIEN_SACH));
-    delay(2000);
-    FB_ThuMangVe(); // Thu máng sách về
+    // Xử lý theo sách có trong máng hay không
+    if ((digitalRead(MangSach) == SS_KhongSach ) && (MaSach == "000"))
+    // Không có sách trong máng và QR code không đọc được
+    {
+      digitalWrite(EN, HIGH);
+      LCD_CanhBao("Lay Sach Loi !!!");
+    }
+    else
+    // Có sách trong máng
+    {
+      FB_DayMangRa(); // Đẩy máng sách ra
+      digitalWrite(EN, HIGH);
+      // CHờ sách được lấy
+      previousMillis = millis();
+      while ((digitalRead(MangSach) == SS_CoSach) && ((millis() - previousMillis) < TIMEOUT_SS_PHAT_HIEN_SACH));
+      delay(2000);
+      FB_ThuMangVe(); // Thu máng sách về
+      luuDuLieuGD();
+    }
+
   }
 }
 
@@ -141,7 +160,9 @@ void RUN_TraSach()
   Serial.println(digitalRead(MangSach));
   previousMillis = millis();
   while ((digitalRead(MangSach) == SS_KhongSach) && ((millis() - previousMillis) < TIMEOUT_SS_PHAT_HIEN_SACH) ) ;
-   Serial.println(digitalRead(MangSach));
+  delay(200); // Xác nhận có sách ổn định, chống xung nhiễu
+  while ((digitalRead(MangSach) == SS_KhongSach) && ((millis() - previousMillis) < TIMEOUT_SS_PHAT_HIEN_SACH) ) ;
+  Serial.println(digitalRead(MangSach));
   if (digitalRead(MangSach) == SS_CoSach)
   // Nếu có sách trong máng
   {
@@ -192,10 +213,11 @@ void RUN_TraSach()
     FB_Dung();    // Dừng động cơ
     FB_QuayLen(); // Quay Lên
     FB_DayRa();   // Đi ra
+    luuDuLieuGD(); // Lưu dữ liệu vào EEPROM
     // Về gốc
     if ( viTriSach == 5 )
     {
-      stepRun(true, X_DIR, X_STP, X_Index[1], TIME_SPEED_LOW);  // Tránh đi lên thẳng vướng vào tấm mica
+      stepRun(true, X_DIR, X_STP, X_Index[1], TIME_SPEED_LOW);  // Tránh đi xuống thẳng vướng vào tấm mica
     }
 
     veGoc(Y_DIR, Y_STP, Y_STOP, TIME_SPEED_HIGH);
@@ -210,31 +232,100 @@ void RUN_TraSach()
   }
 
   digitalWrite(EN, HIGH);
-  
+
 }
 
 // Lưu dữ liệu giao dịch vào EEPROM nếu giao dịch thành công
 void luuDuLieuGD()
 {
-    // if ((  (EE_addr <= EEPROM.length()-3))// save every 100* Update_power_time
-    // {
-    // int Batt_Voltage = Read_Battery_Voltage() * 1000.0;
-    // int Batt_Current = Read_CurrentCharging() * 1000.0;
-    // EEPROM.write(EE_addr, Batt_Voltage / 256);     // Save high byte of Battery Voltage
-    // EEPROM.write(EE_addr + 1, Batt_Voltage % 256); // Save low byte of Battery Voltage
-    // EEPROM.write(EE_addr + 2, Batt_Current / 256); // Save high byte of Battery Voltage
-    // EEPROM.write(EE_addr + 3, Batt_Current % 256); // Save low byte of Battery Voltage
-    // EE_addr += 4;
-    // count = 0;
-    // Serial.println("SAVE DATA INTO EEPROM");
-    // }
+  // lấy các dữ liệu
+  byte dataSave[10];
+  dataSave[0] = byte(VTmaID);
+  dataSave[1] = byte(MaSach.toInt());
+  dataSave[2] = byte(HanhDong);
+  dataSave[3] = byte(Year);
+  dataSave[4] = byte(Month);
+  dataSave[5] = byte(Day);
+  dataSave[6] = byte(Hour);
+  dataSave[7] = byte(Minute);
+  dataSave[8] = byte(Second);
+  dataSave[9] = 0 ;
+
+  // ghi vào eeprom 10 byte
+  EEPROM.get(ADDR_EEPROM_ADDR_SAVE,eeAddrSave)   ; // Lấy vị trí lưu trong EEPROM
+  EEPROM.put(eeAddrSave, dataSave); // luu mang gia tri vao eeprom
+  eeAddrSave +=10;  // tăng giá trị đến địa chỉ lưu tiếp theo
+  // Khi bộ nhớ đầy thì lưu lại ở vị trí đầu
+  if ( eeAddrSave >= ADDR_EEPROM_END_SAVE )
+  {
+    eeAddrSave = ADDR_EEPROM_START_SAVE ; // Quay lại vị trí lưu đầu tiên
+  }
+
+  EEPROM.put(ADDR_EEPROM_ADDR_SAVE,eeAddrSave)   ; // Lưu lại vị trí con trỏ trong EEPROM
+
 }
 
 // Đọc dữ liệu giao dịch từ EEPROM
-void docDulieuGD()
+void docDulieuGD(int soGD)
 {
-  // Tìm trong EEPROM số lượng giao dịch
-  // In các giao dịch ra màn hình
+  // Tìm trong EEPROM theo số lượng giao dịch
+  int eeAddrSaveTemp;
+  byte dataArr[10];
+  bool addrOver = false;
+  EEPROM.get(ADDR_EEPROM_ADDR_SAVE,eeAddrSave)   ; // Lấy vị trí lưu hiện tại trong EEPROM
+  eeAddrSaveTemp = eeAddrSave;
+  if ( eeAddrSave == ADDR_EEPROM_START_SAVE)
+  {
+    eeAddrSave = ADDR_EEPROM_END_SAVE - 10;
+  }
+  else
+  {
+    eeAddrSave -= 10;
+  }
+  // In header
+  Serial.print("Stt\t");
+  Serial.print("ID\t");
+  Serial.print("Ma Sach\t");
+  Serial.print("Loai_GD\t");
+  Serial.print("Nam\t");
+  Serial.print("Thang\t");
+  Serial.print("Ngay\t");
+  Serial.print("Gio\t");
+  Serial.print("Phut\t");
+  Serial.println("Giay\t");
+  // In data giao dịch
+  for (int i = 0; i < soGD; i++)
+  {
+    // Lưu dữ liệu vòng tròn : start -->  end -- > start
+    // đọc data từ giao dịch gần nhất nên bộ nhớ sẽ đọc từ địa chỉ cao xuống thấp
+    if ( eeAddrSave < ADDR_EEPROM_START_SAVE)
+    {
+      eeAddrSave = ADDR_EEPROM_END_SAVE - 10;
+      addrOver = true;
+    }
+    // Đọc hết 1 vòng bộ nhớ thì thoát
+    if ( ( eeAddrSave < eeAddrSaveTemp ) && addrOver )
+    {
+      Serial.println("Đã đọc hết bộ nhớ !!!");
+      break;
+
+    }
+    // Đọc giao dịch
+    EEPROM.get(eeAddrSave,dataArr);
+    // In các giao dịch ra màn hình
+    Serial.print(i+1); // in số thứ tự
+    Serial.print("\t");
+    for (int j = 0; j < 9; j++)
+    {
+      Serial.print(dataArr[j]);
+      Serial.print("\t");
+    }
+    Serial.println(); // Hết 1 dòng giao dịch
+    eeAddrSave -= 10; // Chuyển đến địa chỉ lưu giao dịch trước đó
+
+  }
+
+
 }
 
 // Hàm đọc phím ấn chọn GD
@@ -274,9 +365,9 @@ void setup() {
   Serial.begin(9600);            // toc do cong noi tiep với máy tính
   finger.begin(57600);          // toc do cong noi tiep với cảm biến vân tay
   QRcodeSerial.begin(9600);     // toc do cong noi tiep với đầu đọc QRcode
-  Wire.begin();              
+  Wire.begin();
   delay(50);          // Chờ thiết lập
-  
+
   // Input cum ra vao lay sach
   pinMode(FB_LimitP,INPUT_PULLUP);
   pinMode(FB_LimitN,INPUT_PULLUP);
@@ -312,13 +403,22 @@ void setup() {
   Wire.begin();
   // initialize the LCD
 	lcd.begin();
-  
+
   readTime();   // Đọc thời gian hiện tại
   VT_Info(); // Đọc thông tin cảm biến vân tay
   VT_LED_ON();  // Nháy đèn cảm biến vân tay
   delay(100);
   VT_LED_OFF();
 
+  // Lấy các tham số lưu ở EEPROM
+  EEPROM.get(ADDR_EEPROM_ADDR_SAVE,eeAddrSave)   ;
+  // Ghi giá trị vào EEPROM cho lần đầu tiên
+  if ( eeAddrSave == 0 )
+  {
+    EEPROM.put(ADDR_EEPROM_ADDR_SAVE,ADDR_EEPROM_START_SAVE);
+    eeAddrSave = ADDR_EEPROM_START_SAVE;
+    Serial.println("Ghi gia tri ban dau vao EEPROM !");
+  }
 	// Hiển thị màn hình khởi động
 	lcd.backlight(); // Turn on the blacklight and print a message.
 	lcd.print("!!! WELLCOME !!!") ; // Nội dung dòng 1
@@ -475,7 +575,7 @@ void loop()
       Serial.print("Vi Tri Sach : ");
       Serial.println(viTriSach);
     }
-    
+
     // Đọc QRcode
     if (dataIn.startsWith("QRC"))
     {
@@ -506,6 +606,41 @@ void loop()
       VT_LED_OFF();
       delay(500);
     }
+
+    // Lệnh với EEPROM
+    // Lệnh đọc giá trị int
+    if (dataIn.startsWith("EEGET"))
+    {
+      int _eeAddr,_eeData;
+      String dataInS = dataIn.substring(5, dataIn.length());
+      _eeAddr = dataInS.toInt(); // Lấy địa chỉ EEPROM
+      EEPROM.get(_eeAddr,_eeData)   ; // Lấy dữ liệu
+      Serial.print("EEPROM Read Data: ");
+      Serial.println(_eeData);
+    }
+
+    // Lệnh ghi giá trị int
+    if (dataIn.startsWith("EEPUT"))
+    {
+      int _eeAddr,_eeData;
+      String dataInS = dataIn.substring(5, 8);
+      String dataInD = dataIn.substring(10, dataIn.length());
+      _eeAddr = dataInS.toInt(); // Lấy địa chỉ EEPROM
+      _eeData = dataInD.toInt(); // Lấy giá trị ghi vào
+      EEPROM.put(_eeAddr,_eeData)   ; // Lấy dữ liệu
+      Serial.print("EEPROM Write Data: ");
+      Serial.println(_eeData);
+    }
+
+    // Lệnh đọc dữ liệu giao dịch
+    if (dataIn.startsWith("GD"))
+    {
+      int slGD;
+      String dataInS = dataIn.substring(2, dataIn.length());
+      slGD = dataInS.toInt(); // Lấy địa chỉ EEPROM
+      Serial.println("Doc du lieu GD: ");
+      docDulieuGD(slGD) ; // Lấy dữ liệu
+    }
   }
 
   // >>>>>>>>>>>>>>>  Lấy sách  <<<<<<<<<<<<<<<
@@ -517,7 +652,7 @@ void loop()
   }
 
 // >>>>>>>>>>>>>>>  Trả sách  <<<<<<<<<<<<<<<
-  if ((HanhDong == 2 )) //(digitalRead(RUN_P) == 1)&& (digitalRead(RUN_N) == 0) && 
+  if ((HanhDong == 2 )) //(digitalRead(RUN_P) == 1)&& (digitalRead(RUN_N) == 0) &&
   {
     RUN_TraSach();
     HanhDong = 0; // Thuc hien xong giao dich

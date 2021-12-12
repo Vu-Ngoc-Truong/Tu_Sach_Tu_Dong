@@ -14,7 +14,7 @@ float LX_XUNG_MM = XUNG_1VONG / BUOC_VIT_ME; // Số xung trục lên xuống Y 
 float TP_XUNG_MM = XUNG_1VONG / CHU_VI_PULY; // Số xung trục trái phải X di chuyển 1 mm =5
 
 // Thời gian delay khi xuất xung cho đông cơ Step (uS)
-#define TIME_SPEED_LOW  1000    
+#define TIME_SPEED_LOW  1000
 #define TIME_SPEED_MID   800
 #define TIME_SPEED_HIGH  500
 
@@ -23,7 +23,7 @@ int step_X = 0; // Động cơ trái phải
 int step_Y = 0; // Động cơ lên xuống
 
 // >>>>>>>>> Các tọa độ trục ( Xung)  <<<<<<<
-// Toa do truc X cho cac vi tri sach 0-9  
+// Toa do truc X cho cac vi tri sach 0-9
 int X_Index[10] = {10,475,960,1430,1905,20,490,950,1420,1915};
 // toa do truc Y cho cac vi tri lay sach 0-9
 int Y_Index[10] = {0,0,0,0,0,6500,6500,6500,6475,6450} ; // 6500 ~ 260 mm 25pul/1mm
@@ -177,7 +177,7 @@ void FB_DayVao()
 // Tay gạt đẩy vào không liên quan đến Limit Switch
 void FB_DayVao_NoLimit()
 {
-    
+
     digitalWrite(DCMotorP, HIGH);
     digitalWrite(DCMotorN, LOW);
 }
@@ -196,7 +196,7 @@ void FB_DayRa()
 // Tay gạt đẩy vào không liên quan đến Limit Switch
 void FB_DayRa_NoLimit()
 {
-    
+
     digitalWrite(DCMotorP, LOW);
     digitalWrite(DCMotorN, HIGH);
 }
